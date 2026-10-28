@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#101225">
+<title>Conecta</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{color-scheme:dark;--bg:#0c1020;--panel:#171b31;--line:#303655;--muted:#aab2d0;--pink:#ff4f9a;--blue:#706cff;--green:#50d6b2}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#28204b 0,#0c1020 58%);color:#f7f7ff;font:16px system-ui,-apple-system,Segoe UI,sans-serif;min-height:100vh}
+main{width:min(100% - 26px,600px);margin:auto;padding:22px 0 36px}header{text-align:center;margin:6px 0 20px}.logo{display:inline-grid;place-items:center;width:52px;height:52px;border-radius:17px;background:linear-gradient(135deg,var(--pink),var(--blue));font-size:26px}h1{font-size:31px;margin:8px 0 0;letter-spacing:-1px}header p,.muted{color:var(--muted);font-size:13px;margin:3px 0}
+.panel{background:#171b31ed;border:1px solid var(--line);border-radius:20px;padding:17px;margin:13px 0}h2{font-size:16px;margin:0 0 12px}
+.choices{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.choice{border:1px solid #363c61;background:#1b2038;color:#e7eaff;border-radius:13px;padding:11px 4px;cursor:pointer;font:inherit;font-size:13px;min-height:65px}.choice span{display:block;font-size:21px;margin-bottom:4px}.choice.active{border-color:var(--pink);background:#45213e;box-shadow:inset 0 0 0 1px var(--pink)}
+select,input[type=text],input[type=password]{width:100%;background:#101429;border:1px solid #363c61;color:white;padding:12px;border-radius:11px;font:inherit;margin:5px 0 10px}
+label{display:block;font-size:13px;color:#dce0f7;margin-top:6px}.video{height:300px;border:1px solid #343957;border-radius:17px;background:linear-gradient(145deg,#262849,#101326 65%);display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:8px;position:relative;overflow:hidden}.tile{min-width:0;position:relative;background:#0c1020;border-radius:12px;display:flex;align-items:center;justify-content:center;overflow:hidden;color:#c8cdec;text-align:center;font-size:13px}.tile video{width:100%;height:100%;object-fit:cover}.tile .tilelabel{position:absolute;left:8px;bottom:8px;background:#080b18c9;padding:4px 7px;border-radius:7px;font-size:11px}.tag{position:absolute;top:15px;left:15px;z-index:2;font-size:10px;background:#080b18c9;padding:6px 8px;border-radius:99px;color:#e1e5ff}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:10px}button{border:0;border-radius:12px;padding:12px 14px;font:600 14px system-ui;cursor:pointer}.primary{background:linear-gradient(110deg,var(--pink),var(--blue));color:white}.secondary{background:#272d4b;color:#f3f4ff;border:1px solid #41496e}.danger{background:#54263d;color:#ffe7f0;border:1px solid #853b61}button:disabled{opacity:.45;cursor:not-allowed}
+.status{font-size:13px;color:var(--green);margin-top:10px;min-height:18px}.note{font-size:12px;color:var(--muted);line-height:1.5;margin:10px 1px 0}.smallbtn{font-size:12px;padding:8px;background:#222844;color:#dce0ff;border:1px solid #41496e}.hidden{display:none!important}.check{display:flex;gap:9px;align-items:flex-start;font-size:12px;line-height:1.45;color:#d5daf2}.check input{margin-top:3px;accent-color:var(--pink)}.footer{text-align:center;color:#858eaf;font-size:11px;margin:18px 0}.divider{height:1px;background:#303655;margin:13px 0}
+@media(max-width:390px){.video{height:240px}.choice{font-size:11px}}
+</style>
+</head>
+<body>
+<main>
+<header><div class="logo">✦</div><h1>Conecta</h1><p>Converse com pessoas do mundo todo.</p></header>
+
+<section class="panel" id="setup">
+<h2>Configuração inicial</h2>
+<p class="muted">Para habilitar conexões reais, configure um projeto Supabase gratuito. Os dados ficam neste navegador.</p>
+<label for="supabaseUrl">Project URL do Supabase</label><input id="supabaseUrl" type="text" placeholder="https://seu-projeto.supabase.co" autocomplete="off">
+<label for="supabaseKey">Chave anon/public do Supabase</label><input id="supabaseKey" type="password" placeholder="sb_publishable_... ou chave anon" autocomplete="off">
+<label class="check"><input id="remember" type="checkbox" checked><span>Guardar a configuração neste dispositivo (não use chave secreta/service_role aqui).</span></label>
+<div class="actions"><button class="primary" id="connect">Conectar serviço</button><button class="secondary" id="forget">Limpar configuração</button></div>
+<div class="status" id="setupStatus" aria-live="polite">Ainda não configurado.</div>
+</section>
+
+<section class="panel">
+<h2>Com quem você quer conversar?</h2>
+<div class="choices" id="gender">
+<button class="choice active" data-value="woman"><span>👩</span>Mulheres</button>
+<button class="choice" data-value="man"><span>👨</span>Homens</button>
+<button class="choice" data-value="any"><span>🌎</span>Qualquer pessoa</button>
+</div>
+<div class="divider"></div>
+<label for="myGender">Como você se identifica? (usado para compatibilidade)</label>
+<select id="myGender"><option value="man">Homem</option><option value="woman">Mulher</option><option value="other">Outra identidade</option><option value="unspecified">Prefiro não informar</option></select>
+<label for="country">Região preferida</label>
+<select id="country"><option value="any">Todos os países</option><option value="BR">Brasil</option><option value="outside">Fora do Brasil</option></select>
+<label for="myCountry">Seu país (para pareamento)</label>
+<select id="myCountry"><option value="BR">Brasil</option><option value="AR">Argentina</option><option value="CL">Chile</option><option value="CO">Colômbia</option><option value="MX">México</option><option value="US">Estados Unidos</option><option value="PT">Portugal</option><option value="ES">Espanha</option><option value="OTHER">Outro</option></select>
+</section>
+
+<section class="panel">
+<h2>Vídeo aleatório</h2>
+<div class="video">
+<div class="tag" id="callTag">DESCONECTADO</div>
+<div class="tile" id="localTile">Sua câmera<div class="tilelabel">Você</div></div>
+<div class="tile" id="remoteTile">Aguardando outra pessoa<div class="tilelabel">Conexão</div></div>
+</div>
+<div class="actions">
+<button class="primary" id="start">Procurar pessoa</button>
+<button class="secondary" id="skip" disabled>Pular</button>
+</div>
+<div class="actions">
+<button class="secondary" id="camera">Ativar câmera</button>
+<button class="danger" id="stop" disabled>Encerrar</button>
+</div>
+<div class="status" id="status" aria-live="polite">Configure o Supabase para começar.</div>
+<p class="note">Este projeto usa WebRTC com conexão direta entre navegadores e Supabase Realtime para sinalização. A seleção de gênero usa informações autodeclaradas, não verificadas. Sem servidor TURN, algumas redes podem não conseguir conectar.</p>
+</section>
+
+<section class="panel">
+<h2>Segurança e privacidade</h2>
+<label class="check"><input type="checkbox" id="safety" checked><span>Concordo em não compartilhar endereço, telefone, escola, senhas ou dados financeiros; e em encerrar e denunciar conversas desconfortáveis.</span></label>
+<p class="note">Este é um protótipo técnico, não um serviço moderado. Não o publique para uso aberto sem controles de idade, denúncia/bloqueio, limites contra abuso, política de privacidade e revisão de segurança. Não grava nem armazena vídeo.</p>
+<button class="smallbtn" id="report">Denunciar / encerrar conversa</button>
+</section>
+<div class="footer">Conecta • protótipo experimental • não afiliado ao MiniChat ou Chat Alternative</div>
+</main>
+<script>
+(() => {
+const $ = id => document.getElementById(id);
+const status = $('status'), setupStatus = $('setupStatus');
+let supabase = null, lobby = null, matchChannel = null, pc = null, localStream = null;
+let myId = crypto.randomUUID(), targetGender = 'woman', activeMatch = null, joinedMatch = false, currentPeer = null, searching = false;
+let pendingCandidates = [];
+const rtcConfig = {iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}]};
+const genderButtons = [...document.querySelectorAll('#gender .choice')];
+
+function setStatus(s){status.textContent=s}
+function setSetupStatus(s){setupStatus.textContent=s}
+function labelCountry(c){return ({BR:'Brasil',AR:'Argentina',CL:'Chile',CO:'Colômbia',MX:'México',US:'Estados Unidos',PT:'Portugal',ES:'Espanha',OTHER:'Outro'})[c] || 'Outro'}
+function me(){return {id:myId, gender:$('myGender').value, country:$('myCountry').value, targetGender, region:$('country').value, ts:Date.now()}}
+function compatible(a,b){
+  if(a.id===b.id) return false;
+  const genderOK = p => p.targetGender==='any' || (p.targetGender==='woman' && b.gender==='woman') || (p.targetGender==='man' && b.gender==='man');
+  if(!genderOK(a) || !(b.targetGender==='any' || (b.targetGender==='woman' && a.gender==='woman') || (b.targetGender==='man' && a.gender==='man'))) return false;
+  const regionOK=(p,other)=>p.region==='any'||(p.region==='BR'&&other.country==='BR')||(p.region==='outside'&&other.country!=='BR');
+  return regionOK(a,b)&&regionOK(b,a);
+}
+function stateList(){if(!lobby)return []; const st=lobby.presenceState(); return Object.values(st).flat().filter(x=>x && x.id && x.id!==myId && Date.now()-x.ts<120000)}
+function findPair(){
+  if(!lobby || activeMatch || !searching) return;
+  const mine=me(), peers=stateList().filter(p=>compatible(mine,p)).sort((a,b)=>a.id.localeCompare(b.id));
+  if(!peers.length) return;
+  const peer=peers[0];
+  // Both clients derive the same match id from the two stable session ids.
+  const ids=[myId,peer.id].sort();
+  const matchId=ids.join('_');
+  currentPeer=peer; activeMatch=matchId;
+  $('callTag').textContent='CONECTANDO';
+  setStatus('Encontramos um perfil compatível. Preparando vídeo…');
+  joinMatch(matchId, peer.id);
+}
+async function connectService(){
+  const url=$('supabaseUrl').value.trim(), key=$('supabaseKey').value.trim();
+  if(!/^https:\/\/[a-zA-Z0-9.-]+\.supabase\.co\/?$/.test(url)||!key){setSetupStatus('Confira a Project URL e a chave anon/public.');return}
+  if(!window.supabase){setSetupStatus('Não foi possível carregar a biblioteca. Verifique sua internet.');return}
+  try{
+    supabase=window.supabase.createClient(url.replace(/\/$/,''),key,{realtime:{params:{eventsPerSecond:10}}});
+    if($('remember').checked){localStorage.setItem('conecta_supabase_url',url);localStorage.setItem('conecta_supabase_key',key)}
+    else {localStorage.removeItem('conecta_supabase_url');localStorage.removeItem('conecta_supabase_key')}
+    setSetupStatus('Serviço configurado neste navegador.');
+    await joinLobby();
+  }catch(e){setSetupStatus('Falha ao configurar: '+e.message)}
+}
+async function joinLobby(){
+  if(!supabase) return;
+  if(lobby){try{await supabase.removeChannel(lobby)}catch{}}
+  lobby=supabase.channel('conecta-lobby-v1',{config:{presence:{key:myId},broadcast:{self:false}}});
+  lobby.on('presence',{event:'sync'},findPair);
+  lobby.on('presence',{event:'join'},findPair);
+  lobby.on('presence',{event:'leave'},()=>{if(activeMatch&&!joinedMatch){endCall('A outra pessoa saiu da fila.');}});
+  lobby.subscribe(async state=>{
+    if(state==='SUBSCRIBED'){
+      await lobby.track(me());
+      setStatus('Conectado ao serviço. Toque em “Procurar pessoa”.');
+    } else if(state==='CHANNEL_ERROR'||state==='TIMED_OUT') setStatus('Falha no serviço em tempo real. Confira a configuração do Supabase.');
+  });
+}
+async function joinMatch(matchId, peerId){
+  if(!supabase||!activeMatch)return;
+  matchChannel=supabase.channel('conecta-match-'+matchId,{config:{broadcast:{self:false}}});
+  matchChannel.on('broadcast',{event:'signal'},async ({payload})=>{
+    if(!activeMatch||payload.from===myId||payload.to!==myId)return;
+    try{
+      if(payload.type==='offer'){
+        await ensurePeer();
+        await pc.setRemoteDescription(payload.description);
+        for(const c of pendingCandidates.splice(0)) await pc.addIceCandidate(c);
+        const answer=await pc.createAnswer(); await pc.setLocalDescription(answer);
+        await sendSignal({type:'answer',description:pc.localDescription,to:peerId});
+      } else if(payload.type==='answer' && pc && !pc.currentRemoteDescription){
+        await pc.setRemoteDescription(payload.description);
+        for(const c of pendingCandidates.splice(0)) await pc.addIceCandidate(c);
+      } else if(payload.type==='ice' && payload.candidate){
+        if(pc&&pc.remoteDescription) await pc.addIceCandidate(payload.candidate);
+        else pendingCandidates.push(payload.candidate);
+      } else if(payload.type==='bye'){endCall('A outra pessoa encerrou a chamada.')}
+    }catch(e){setStatus('Erro na negociação de vídeo: '+e.message)}
+  });
+  matchChannel.subscribe(async state=>{
+    if(state==='SUBSCRIBED'){
+      joinedMatch=true;
+      $('callTag').textContent='SINALIZAÇÃO ATIVA';
+      // Deterministic offerer: lexicographically smaller ID creates the offer.
+      if(myId.localeCompare(peerId)<0){
+        try{await ensurePeer();const offer=await pc.createOffer();await pc.setLocalDescription(offer);await sendSignal({type:'offer',description:pc.localDescription,to:peerId})}
+        catch(e){setStatus('Não foi possível iniciar vídeo: '+e.message)}
+      }
+      setStatus('Canal de chamada pronto. Se a outra pessoa aceitar, o vídeo aparecerá aqui.');
+    }
+  });
+}
+async function ensurePeer(){
+  if(pc)return pc;
+  if(!localStream) await enableCamera(false);
+  pc=new RTCPeerConnection(rtcConfig);
+  if(localStream) localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));
+  pc.ontrack=e=>{const v=document.createElement('video');v.autoplay=true;v.playsInline=true;v.srcObject=e.streams[0];$('remoteTile').replaceChildren(v);const l=document.createElement('div');l.className='tilelabel';l.textContent='Pessoa conectada';$('remoteTile').appendChild(l);$('callTag').textContent='EM CHAMADA';setStatus('Vídeo conectado. Não compartilhe informações pessoais.')};
+  pc.onicecandidate=e=>{if(e.candidate)sendSignal({type:'ice',candidate:e.candidate,to:currentPeer?.id})};
+  pc.onconnectionstatechange=()=>{if(pc&&['failed','disconnected','closed'].includes(pc.connectionState))setStatus('Conexão interrompida. Tente pular ou procurar novamente.')};
+  return pc;
+}
+async function sendSignal(payload){
+  if(!matchChannel)return;
+  try{await matchChannel.send({type:'broadcast',event:'signal',payload:{...payload,from:myId,to:payload.to||currentPeer?.id}})}catch(e){setStatus('Falha ao enviar sinal: '+e.message)}
+}
+async function enableCamera(showStatus=true){
+  if(!navigator.mediaDevices?.getUserMedia){if(showStatus)setStatus('Câmera indisponível. Use um navegador moderno em HTTPS.');return}
+  try{
+    localStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:true});
+    const v=document.createElement('video');v.autoplay=true;v.muted=true;v.playsInline=true;v.srcObject=localStream;
+    $('localTile').replaceChildren(v);const l=document.createElement('div');l.className='tilelabel';l.textContent='Você';$('localTile').appendChild(l);
+    $('camera').textContent='Desativar câmera';if(showStatus)setStatus('Câmera e microfone ativados. Você controla as permissões no navegador.');
+  }catch(e){if(showStatus)setStatus('Permissão de câmera/microfone negada ou indisponível: '+e.message)}
+}
+function disableCamera(){if(localStream){localStream.getTracks().forEach(t=>t.stop());localStream=null}$('localTile').textContent='Sua câmera';const l=document.createElement('div');l.className='tilelabel';l.textContent='Você';$('localTile').appendChild(l);$('camera').textContent='Ativar câmera'}
+async function startSearch(){
+  if(!supabase){setStatus('Configure o Supabase acima primeiro.');return}
+  if(!$('safety').checked){setStatus('Leia e marque o aviso de segurança antes de continuar.');return}
+  if(!navigator.mediaDevices?.getUserMedia){setStatus('Use HTTPS e um navegador com suporte a câmera.');return}
+  if(!localStream){await enableCamera(false);if(!localStream)return}
+  if(!lobby){await joinLobby();return}
+  activeMatch=null;joinedMatch=false;currentPeer=null;pendingCandidates=[];searching=true;
+  $('start').disabled=true;$('skip').disabled=false;$('stop').disabled=false;
+  $('callTag').textContent='PROCURANDO';
+  await lobby.track(me());
+  setStatus('Procurando alguém compatível. Deixe a página aberta…');
+  findPair();
+  window.__conectaSearchTimeout=setTimeout(()=>{if(!activeMatch){setStatus('Ainda não encontramos alguém com esses filtros. Tente “Qualquer pessoa” ou outra região.');}},30000);
+}
+async function endCall(message='Chamada encerrada.'){
+  searching=false;
+  if(window.__conectaSearchTimeout)clearTimeout(window.__conectaSearchTimeout);
+  if(matchChannel&&activeMatch){try{await sendSignal({type:'bye',to:currentPeer?.id});await supabase.removeChannel(matchChannel)}catch{}}
+  matchChannel=null;activeMatch=null;joinedMatch=false;currentPeer=null;pendingCandidates=[];
+  if(pc){try{pc.ontrack=null;pc.close()}catch{}pc=null}
+  $('remoteTile').textContent='Aguardando outra pessoa';const rl=document.createElement('div');rl.className='tilelabel';rl.textContent='Conexão';$('remoteTile').appendChild(rl);
+  $('start').disabled=false;$('skip').disabled=true;$('stop').disabled=true;$('callTag').textContent='DESCONECTADO';
+  setStatus(message);
+}
+genderButtons.forEach(b=>b.addEventListener('click',()=>{if(activeMatch)return;targetGender=b.dataset.value;genderButtons.forEach(x=>x.classList.toggle('active',x===b));if(lobby)lobby.track(me());}));
+$('connect').addEventListener('click',connectService);
+$('forget').addEventListener('click',()=>{localStorage.removeItem('conecta_supabase_url');localStorage.removeItem('conecta_supabase_key');$('supabaseUrl').value='';$('supabaseKey').value='';supabase=null;setSetupStatus('Configuração local removida.');setStatus('Configure o Supabase para começar.')});
+$('start').addEventListener('click',startSearch);
+$('skip').addEventListener('click',()=>endCall('Você saiu da conversa. Toque em procurar para tentar novamente.'));
+$('stop').addEventListener('click',()=>endCall());
+$('camera').addEventListener('click',()=>localStream?disableCamera():enableCamera());
+$('report').addEventListener('click',()=>endCall('Conversa encerrada. Este protótipo não envia denúncias para um moderador; não publique sem implementar esse recurso.'));
+$('country').addEventListener('change',()=>{if(lobby&&!activeMatch)lobby.track(me())});
+$('myGender').addEventListener('change',()=>{if(lobby&&!activeMatch)lobby.track(me())});
+$('myCountry').addEventListener('change',()=>{if(lobby&&!activeMatch)lobby.track(me())});
+const savedUrl=localStorage.getItem('conecta_supabase_url'),savedKey=localStorage.getItem('conecta_supabase_key');
+if(savedUrl&&savedKey){$('supabaseUrl').value=savedUrl;$('supabaseKey').value=savedKey;setSetupStatus('Configuração salva neste dispositivo. Toque em Conectar serviço.')}
+window.addEventListener('beforeunload',()=>{try{pc?.close();localStream?.getTracks().forEach(t=>t.stop())}catch{}});
+})();
+</script>
+</body>
+</html>
